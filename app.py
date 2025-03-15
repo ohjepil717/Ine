@@ -12,19 +12,28 @@ if "memo_text" not in st.session_state:
 # 앱 UI
 st.title("메모 분류 및 저장")
 
-# 메모 입력
-st.session_state.memo_text = st.text_area("여기에 메모를 입력하세요:", value=st.session_state.memo_text)
+# 메모 입력 및 실시간 분류
+st.session_state.memo_text = st.text_area("여기에 메모를 입력하세요:", value=st.session_state.memo_text, height=200, key="memo_input")
 
-# 분류 버튼
-if st.button("분류하기"):
+# 실시간 분류 로직
+if st.session_state.memo_text:
     categorized_data = []
     lines = st.session_state.memo_text.split("\n")
+    names = []  # 이름 중복 체크용 리스트
 
     for line in lines:
         if "날짜" in line:
             categorized_data.append(("날짜", line.replace("날짜:", "").strip()))
         elif "이름" in line:
-            categorized_data.append(("이름", line.replace("이름:", "").strip()))
+            name = line.replace("이름:", "").strip()
+            if name in names:
+                st.warning(f"중복된 이름 '{name}'이 발견되었습니다!")
+                choice = st.selectbox(f"'{name}'을(를) 사용하시겠습니까?", ["무시", "사용"], key=f"dup_{name}")
+                if choice == "사용":
+                    categorized_data.append(("이름", name))
+            else:
+                names.append(name)
+                categorized_data.append(("이름", name))
         elif "가격" in line:
             categorized_data.append(("가격", line.replace("가격:", "").strip()))
         elif "인원수" in line:
@@ -36,10 +45,10 @@ if st.button("분류하기"):
         elif "방문목적" in line:
             categorized_data.append(("방문목적", line.replace("방문목적:", "").strip()))
 
-    # 데이터 저장
-    if categorized_data:
+    # 데이터 저장 (중복 이름 처리 후)
+    if categorized_data and not st.session_state.data_list or categorized_data not in st.session_state.data_list:
         st.session_state.data_list.append(categorized_data)
-        st.success("데이터가 분류되었습니다!")
+        st.success("데이터가 실시간으로 분류되었습니다!")
 
 # 데이터 표시
 if st.session_state.data_list:
@@ -61,8 +70,12 @@ if st.session_state.data_list:
         )
         st.success(f"엑셀 파일이 준비되었습니다: {filename}")
 
-# 메모 삭제 버튼
+# 메모 지우기 (메모장만 지우기)
 if st.button("메모 지우기"):
     st.session_state.memo_text = ""
+    st.warning("메모장이 지워졌습니다.")
+
+# 분류 데이터 삭제 (분류된 데이터만 지우기)
+if st.button("분류 데이터 삭제"):
     st.session_state.data_list.clear()
-    st.warning("메모가 삭제되었습니다.")
+    st.warning("분류된 데이터가 삭제되었습니다.")
